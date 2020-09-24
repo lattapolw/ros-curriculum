@@ -1,0 +1,13 @@
+<launch>
+	<arg name="world" default="robocup14_spl_field"/>
+	<!-- <arg name="debug" default="false"/>
+	<arg name="physics" default="ode"/> -->
+
+	<include file="$(find husky_gazebo)/launch/husky_empty_world.launch">
+		<arg name="world_name" value="/usr/share/gazebo-9/worlds/$(arg world).world"/>
+		<!-- <arg name="debug" value="$(arg debug)"/>
+		<arg name="physics" value="$(arg physics)"/> -->
+	</include>
+	<!-- <include file="/catkin_ws/src/teleop_twist_keyboard/teleop_twist_keyboard.py">
+	</include> -->
+</launch>
