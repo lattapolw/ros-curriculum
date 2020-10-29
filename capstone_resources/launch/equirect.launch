@@ -1,0 +1,3 @@
+<launch>
+    <node name="equirect_latlong_to_xy" type="../equirect_latlong_to_xy.py"/>
+</launch>

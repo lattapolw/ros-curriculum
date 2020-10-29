@@ -1,6 +1,10 @@
 #!/usr/bin/env python
+import roslib
+roslib.load_manifest('setgoal_actionlib')
 from math import radians, cos, sqrt
 import rospy
+import actionlib
+import actionlib_msgs.msg
 from numpy import genfromtxt as gt
 from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import Header
@@ -8,48 +12,39 @@ from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import Quaternion
 from nav_msgs.msg import Odometry
+from move_base_msgs.msg import MoveBaseFeedback, MoveBaseActionResult, MoveBaseGoal, MoveBaseAction
+
+def setGoal_client():
+  num_goal = 0
+  client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
+  client.wait_for_server()
+  goal = MoveBaseGoal()
+  while num_goal <= 6:
+    [coor_x, coor_y] = equirect_latlong_to_xy(lat_cor[num_goal], long_cor[num_goal])
+    goal.target_pose = stamp(coor_x,coor_y)
+    client.send_goal(goal)
+    # client.wait_for_result()
+    result = 0
+    while result != 3:
+      result = client.get_state()
+      print(result)
+    num_goal += 1
+
 
 # constants w.r.t Mars Society MDRS
 R     =  6378137.0      # earth equatorial radius, in meters
 lat1  =       38.406419 # initial latitude
 long0 =     -110.791920 # initial longitude
 
-goal_count = 0
-count = 0
-send_goal = 1
-do_once = 1
-
-def setgoal(data):
-  global goal_count, count, send_goal, coor_x, coor_y, do_once
-  data_position = data.pose.pose.position
-  cur_position = [data_position.x, data_position.y]
-
-  global goal_pub
-  dist = sqrt((coor_x-cur_position[0])**2+(coor_y-cur_position[1])**2)
-  if dist <= 1.5:
-    if count <= 250:
-      count += 1
-    elif count > 250:
-      goal_count += 1
-      count = 0
-      send_goal = 1
-  else:
-    count = 0
-  if goal_count == 7:
-    goal_count = 0
-    send_goal = 1
-  [coor_x, coor_y] = equirect_latlong_to_xy(lat_cor[goal_count], long_cor[goal_count])
-
-  print("dist = %f, count = %f, goal = %f" %(dist,count,goal_count))
-
+def stamp(coor_x,coor_y):
   marker = Header()
   marker.seq = 0
   marker.frame_id = "odom"
   marker.stamp = rospy.get_rostime()
 
   coordinate = Point()
-  coordinate.x = coor_x
-  coordinate.y = coor_y
+  coordinate.x = coor_x + 0.1
+  coordinate.y = coor_y + 0.1
   coordinate.z = 0
 
   orientation = Quaternion()
@@ -65,16 +60,7 @@ def setgoal(data):
   goal = PoseStamped()
   goal.header = marker
   goal.pose = pose
-  if send_goal == 1:
-    goal_pub.publish(goal)
-    print("sent")
-    rospy.sleep(1)
-    if do_once == 1:
-      goal_pub.publish(goal)
-      print("sent")
-      rospy.sleep(1)
-      do_once = 0
-    send_goal = 0
+  return goal
 
 # converts input latitude and longitude coordinates 
 #   (expressed as degrees!)
@@ -92,12 +78,8 @@ def goal_list():
   long_cor = [latlong_list[i][2] for i in range(latlong_list.shape[0])]
   [coor_x,coor_y] = equirect_latlong_to_xy(lat_cor[0], long_cor[0])
 
-def get_global_pos():
-  rospy.Subscriber("/odometry/filtered/global", Odometry, setgoal, queue_size=1)
-  rospy.spin()
-
 if __name__ == '__main__':
-  rospy.init_node('goal_publisher')
+  rospy.init_node('setGoal_threading')
   goal_list()
-  goal_pub = rospy.Publisher("/move_base_simple/goal", PoseStamped, queue_size=1)
-  get_global_pos()
+  setGoal_client()
+  print("Done")
